@@ -43,3 +43,59 @@ module "eks" {
     }
   }
 }
+
+data "http" "albc_policy_json" {
+  url = "https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/v2.4.0/docs/install/iam_policy.json"
+}
+
+resource "aws_iam_policy" "albc" {
+  name   = "AWSLoadBalancerControllerIAMPolicy"
+  policy = data.http.albc_policy_json.body
+}
+
+module "albc_irsa" {
+  source  = "terraform-aws-modules/iam/aws//modules/iam-assumable-role-with-oidc"
+  version = "4.17.1"
+
+  create_role                   = true
+  role_name                     = "aws-load-balancer-controller"
+  role_policy_arns              = [aws_iam_policy.albc.arn]
+  provider_url                  = module.eks.cluster_oidc_issuer_url
+  oidc_fully_qualified_subjects = ["system:serviceaccount:kube-system:aws-load-balancer-controller"]
+}
+
+data "aws_eks_cluster" "cluster" {
+  name = module.eks.cluster_id
+}
+
+data "aws_eks_cluster_auth" "cluster" {
+  name = module.eks.cluster_id
+}
+
+provider "helm" {
+  kubernetes {
+    host                   = data.aws_eks_cluster.cluster.endpoint
+    cluster_ca_certificate = base64decode(data.aws_eks_cluster.cluster.certificate_authority[0].data)
+    token                  = data.aws_eks_cluster_auth.cluster.token
+  }
+}
+
+resource "helm_release" "albc" {
+  name            = "aws-load-balancer-controller"
+  repository      = "https://aws.github.io/eks-charts"
+  chart           = "aws-load-balancer-controller"
+  namespace       = "kube-system"
+  cleanup_on_fail = true
+
+  dynamic "set" {
+    for_each = {
+      "clusterName"                                               = module.eks.cluster_id
+      "serviceAccount.name"                                       = "aws-load-balancer-controller"
+      "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn" = module.albc_irsa.iam_role_arn
+    }
+    content {
+      name  = set.key
+      value = set.value
+    }
+  }
+}
