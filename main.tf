@@ -54,8 +54,7 @@ resource "aws_iam_policy" "albc" {
 }
 
 module "albc_irsa" {
-  source  = "terraform-aws-modules/iam/aws//modules/iam-assumable-role-with-oidc"
-  version = "4.17.1"
+  source = "terraform-aws-modules/iam/aws//modules/iam-assumable-role-with-oidc"
 
   create_role                   = true
   role_name                     = "aws-load-balancer-controller"
@@ -87,15 +86,33 @@ resource "helm_release" "albc" {
   namespace       = "kube-system"
   cleanup_on_fail = true
 
-  dynamic "set" {
-    for_each = {
-      "clusterName"                                               = module.eks.cluster_id
-      "serviceAccount.name"                                       = "aws-load-balancer-controller"
-      "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn" = module.albc_irsa.iam_role_arn
-    }
-    content {
-      name  = set.key
-      value = set.value
-    }
+  set {
+    name  = "clusterName"
+    value = module.eks.cluster_id
+  }
+
+  set {
+    name  = "serviceAccount.name"
+    value = "aws-load-balancer-controller"
+  }
+
+  set {
+    name  = "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
+    value = module.albc_irsa.iam_role_arn
+  }
+
+  set {
+    name  = "region"
+    value = data.aws_region.current.name
+  }
+
+  set {
+    name  = "vpcId"
+    value = module.vpc.vpc_id
+  }
+
+  set {
+    name  = "image.repository"
+    value = "602401143452.dkr.ecr.ap-northeast-1.amazonaws.com/amazon/aws-load-balancer-controller"
   }
 }
