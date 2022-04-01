@@ -20,8 +20,7 @@ locals {
 module "eks" {
   source = "terraform-aws-modules/eks/aws"
 
-  cluster_name    = local.cluster_name
-  cluster_version = "1.21"
+  cluster_name = local.cluster_name
 
   vpc_id     = module.vpc.vpc_id
   subnet_ids = module.vpc.private_subnets
@@ -97,11 +96,6 @@ resource "helm_release" "albc" {
   }
 
   set {
-    name  = "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
-    value = module.albc_irsa.iam_role_arn
-  }
-
-  set {
     name  = "region"
     value = data.aws_region.current.name
   }
@@ -109,10 +103,5 @@ resource "helm_release" "albc" {
   set {
     name  = "vpcId"
     value = module.vpc.vpc_id
-  }
-
-  set {
-    name  = "image.repository"
-    value = "602401143452.dkr.ecr.ap-northeast-1.amazonaws.com/amazon/aws-load-balancer-controller"
   }
 }
