@@ -61,7 +61,7 @@ data "http" "albc_policy_json" {
   url = "https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/main/docs/install/iam_policy.json"
 }
 
-resource "aws_iam_policy" "albc" {
+resource "aws_iam_policy" "policy" {
   name   = "AWSLoadBalancerControllerIAMPolicy"
   policy = data.http.albc_policy_json.body
 }
@@ -71,12 +71,12 @@ module "albc_irsa" {
 
   create_role                   = true
   role_name                     = "aws-load-balancer-controller"
-  role_policy_arns              = [aws_iam_policy.albc.arn]
+  role_policy_arns              = [aws_iam_policy.policy.arn]
   provider_url                  = module.eks.cluster_oidc_issuer_url
   oidc_fully_qualified_subjects = ["system:serviceaccount:kube-system:aws-load-balancer-controller"]
 }
 
-data "aws_eks_cluster_auth" "cluster" {
+data "aws_eks_cluster_auth" "auth" {
   name = module.eks.cluster_id
 }
 
@@ -84,7 +84,7 @@ provider "helm" {
   kubernetes {
     host                   = module.eks.cluster_endpoint
     cluster_ca_certificate = module.eks.cluster_certificate_authority_data
-    token                  = data.aws_eks_cluster_auth.cluster.token
+    token                  = data.aws_eks_cluster_auth.auth.token
   }
 }
 
