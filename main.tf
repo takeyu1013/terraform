@@ -4,7 +4,7 @@ data "aws_availability_zones" "available" {}
 
 locals {
   cluster_name = "cluster"
-  subnet_tags_for_eks = {
+  tag = {
     "kubernetes.io/cluster/${local.cluster_name}" = "owned"
   }
 }
@@ -19,8 +19,8 @@ module "vpc" {
   public_subnets     = ["10.0.4.0/24", "10.0.5.0/24", "10.0.6.0/24"]
   enable_nat_gateway = true
 
-  private_subnet_tags = local.subnet_tags_for_eks
-  public_subnet_tags = merge(local.subnet_tags_for_eks, {
+  private_subnet_tags = local.tag
+  public_subnet_tags = merge(local.tag, {
     "kubernetes.io/role/elb" = ""
   })
 }
@@ -76,18 +76,14 @@ module "albc_irsa" {
   oidc_fully_qualified_subjects = ["system:serviceaccount:kube-system:aws-load-balancer-controller"]
 }
 
-data "aws_eks_cluster" "cluster" {
-  name = module.eks.cluster_id
-}
-
 data "aws_eks_cluster_auth" "cluster" {
   name = module.eks.cluster_id
 }
 
 provider "helm" {
   kubernetes {
-    host                   = data.aws_eks_cluster.cluster.endpoint
-    cluster_ca_certificate = base64decode(data.aws_eks_cluster.cluster.certificate_authority[0].data)
+    host                   = module.eks.cluster_endpoint
+    cluster_ca_certificate = module.eks.cluster_certificate_authority_data
     token                  = data.aws_eks_cluster_auth.cluster.token
   }
 }
