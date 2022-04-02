@@ -2,6 +2,13 @@ data "aws_region" "current" {}
 
 data "aws_availability_zones" "available" {}
 
+locals {
+  cluster_name = "cluster"
+  subnet_tags_for_eks = {
+    "kubernetes.io/cluster/${local.cluster_name}" = "owned"
+  }
+}
+
 module "vpc" {
   source = "terraform-aws-modules/vpc/aws"
 
@@ -11,11 +18,13 @@ module "vpc" {
   private_subnets    = ["10.0.1.0/24", "10.0.2.0/24", "10.0.3.0/24"]
   public_subnets     = ["10.0.4.0/24", "10.0.5.0/24", "10.0.6.0/24"]
   enable_nat_gateway = true
+
+  private_subnet_tags = local.subnet_tags_for_eks
+  public_subnet_tags = merge(local.subnet_tags_for_eks, {
+    "kubernetes.io/role/elb" = ""
+  })
 }
 
-locals {
-  cluster_name = "cluster"
-}
 
 module "eks" {
   source = "terraform-aws-modules/eks/aws"
@@ -37,6 +46,12 @@ module "eks" {
         },
         {
           namespace = "default"
+        },
+        {
+          namespace = "kube-system"
+        },
+        {
+          namespace = "game-2048"
         }
       ]
     }
@@ -79,29 +94,37 @@ provider "helm" {
 }
 
 resource "helm_release" "albc" {
-  name            = "aws-load-balancer-controller"
-  repository      = "https://aws.github.io/eks-charts"
-  chart           = "aws-load-balancer-controller"
-  namespace       = "kube-system"
-  cleanup_on_fail = true
+  name       = "aws-load-balancer-controller"
+  repository = "https://aws.github.io/eks-charts"
+  chart      = "aws-load-balancer-controller"
+  namespace  = "kube-system"
 
   set {
     name  = "clusterName"
     value = module.eks.cluster_id
   }
-
+  set {
+    name  = "serviceAccount.create"
+    value = true
+  }
   set {
     name  = "serviceAccount.name"
     value = "aws-load-balancer-controller"
   }
-
+  set {
+    name  = "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
+    value = module.albc_irsa.iam_role_arn
+  }
   set {
     name  = "region"
     value = data.aws_region.current.name
   }
-
   set {
     name  = "vpcId"
     value = module.vpc.vpc_id
   }
+
+  depends_on = [
+    module.eks.fargate_profiles
+  ]
 }
