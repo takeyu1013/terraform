@@ -58,7 +58,7 @@ module "eks" {
 }
 
 data "http" "albc_policy_json" {
-  url = "https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/v2.4.0/docs/install/iam_policy.json"
+  url = "https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/main/docs/install/iam_policy.json"
 }
 
 resource "aws_iam_policy" "albc" {
