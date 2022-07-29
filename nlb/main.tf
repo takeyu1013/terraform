@@ -58,41 +58,42 @@ module "eks" {
   }
 
   cluster_security_group_additional_rules = {
-    cluster_egress_internet = {
-      description      = "Allow cluster egress access to the Internet."
-      protocol         = "-1"
-      from_port        = 0
-      to_port          = 0
-      type             = "egress"
-      cidr_blocks      = ["0.0.0.0/0"]
-      ipv6_cidr_blocks = ["::/0"]
+    cluster_egress_node = {
+      description                = "NGINX Admission Hook"
+      protocol                   = "tcp"
+      from_port                  = 8334
+      to_port                    = 8334
+      type                       = "egress"
+      source_node_security_group = true
     }
   }
   node_security_group_additional_rules = {
-    workers_ingress_cluster = {
-      description                   = "Allow workers pods to receive communication from the cluster control plane."
+    node_ingress_cluster = {
+      description                   = "NGINX Admission Hook"
       protocol                      = "tcp"
-      from_port                     = 1025
-      to_port                       = 65535
+      from_port                     = 8334
+      to_port                       = 8334
       type                          = "ingress"
       source_cluster_security_group = true
     }
-    workers_ingress_self = {
-      description = "Allow node to communicate with each other."
-      protocol    = "-1"
-      from_port   = 0
-      to_port     = 65535
-      type        = "ingress"
-      self        = true
-    }
-    workers_egress_internet = {
-      description      = "Allow nodes all egress to the Internet."
-      protocol         = "-1"
-      from_port        = 0
-      to_port          = 0
-      type             = "egress"
-      cidr_blocks      = ["0.0.0.0/0"]
-      ipv6_cidr_blocks = ["::/0"]
-    }
   }
 }
+
+resource "aws_security_group_rule" "cluster_primary_egress_node" {
+  type                     = "egress"
+  from_port                = 0
+  to_port                  = 65535
+  protocol                 = "tcp"
+  source_security_group_id = module.eks.cluster_primary_security_group_id
+  security_group_id        = module.eks.node_security_group_id
+}
+
+resource "aws_security_group_rule" "node_ingress_cluster_primary" {
+  type                     = "ingress"
+  from_port                = 0
+  to_port                  = 65535
+  protocol                 = "tcp"
+  source_security_group_id = module.eks.node_security_group_id
+  security_group_id        = module.eks.cluster_primary_security_group_id
+}
+
