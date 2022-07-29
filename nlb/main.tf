@@ -79,21 +79,21 @@ module "eks" {
   }
 }
 
-resource "aws_security_group_rule" "cluster_primary_egress_node" {
+resource "aws_security_group_rule" "node_egress_cluster_primary" {
+  security_group_id        = module.eks.node_security_group_id
   type                     = "egress"
   from_port                = 0
   to_port                  = 65535
   protocol                 = "tcp"
   source_security_group_id = module.eks.cluster_primary_security_group_id
-  security_group_id        = module.eks.node_security_group_id
 }
 
-resource "aws_security_group_rule" "node_ingress_cluster_primary" {
+resource "aws_security_group_rule" "cluster_primary_ingress_node" {
+  security_group_id        = module.eks.cluster_primary_security_group_id
   type                     = "ingress"
   from_port                = 0
   to_port                  = 65535
   protocol                 = "tcp"
   source_security_group_id = module.eks.node_security_group_id
-  security_group_id        = module.eks.cluster_primary_security_group_id
 }
 
