@@ -16,9 +16,11 @@ kubectl patch deployment coredns \
 kubectl rollout restart -n kube-system deployment coredns
 ```
 
-## Verify
+## Install NGINX Ingress
 
 ```sh
-kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/v2.4.1/docs/examples/2048/2048_full.yaml
-kubectl get ingress/ingress-2048 -n game-2048
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.3.0/deploy/static/provider/aws/deploy.yaml
+kubectl apply -f test.yaml
+kubectl expose po test --name=testsvc --port=80
+kubectl apply -f ingress.yaml
 ```
