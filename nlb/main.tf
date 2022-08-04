@@ -28,7 +28,6 @@ module "vpc" {
   })
 }
 
-
 module "eks" {
   source = "terraform-aws-modules/eks/aws"
 
@@ -61,8 +60,8 @@ module "eks" {
     cluster_egress_node = {
       description                = "NGINX Admission Hook"
       protocol                   = "tcp"
-      from_port                  = 8334
-      to_port                    = 8334
+      from_port                  = 8443
+      to_port                    = 8443
       type                       = "egress"
       source_node_security_group = true
     }
@@ -71,8 +70,8 @@ module "eks" {
     node_ingress_cluster = {
       description                   = "NGINX Admission Hook"
       protocol                      = "tcp"
-      from_port                     = 8334
-      to_port                       = 8334
+      from_port                     = 8443
+      to_port                       = 8443
       type                          = "ingress"
       source_cluster_security_group = true
     }
